@@ -6,6 +6,8 @@ const textColorInput = document.getElementById('textColor');
 const fontSizeInput = document.getElementById('fontSize');
 const bgColor1Input = document.getElementById('bgColor1');
 const bgColor2Input = document.getElementById('bgColor2');
+const gradientDirectionSelect = document.getElementById('gradientDirection');
+const gradientSmoothnessInput = document.getElementById('gradientSmoothness');
 const fontFamilySelect = document.getElementById('fontFamily');
 const downloadBtn = document.getElementById('downloadBtn');
 const resetPositionBtn = document.getElementById('resetPositionBtn');
@@ -81,10 +83,46 @@ function calculateLineWidth(text) {
  * Draws the background canvas (gradient + highlight).
  */
 function drawCanvasBackground() {
-    // 1. Draw gradient background
-    const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, canvas.width * 1.5);
+    // 1. Draw linear gradient background
+    const direction = gradientDirectionSelect.value;
+    let x0, y0, x1, y1;
+
+    switch (direction) {
+        case 'to top right':
+            x0 = 0; y0 = canvas.height; x1 = canvas.width; y1 = 0;
+            break;
+        case 'to bottom right':
+            x0 = 0; y0 = 0; x1 = canvas.width; y1 = canvas.height;
+            break;
+        case 'to right':
+            x0 = 0; y0 = canvas.height / 2; x1 = canvas.width; y1 = canvas.height / 2;
+            break;
+        case 'to left':
+            x0 = canvas.width; y0 = canvas.height / 2; x1 = 0; y1 = canvas.height / 2;
+            break;
+        case 'to top':
+            x0 = canvas.width / 2; y0 = canvas.height; x1 = canvas.width / 2; y1 = 0;
+            break;
+        case 'to bottom':
+            x0 = canvas.width / 2; y0 = 0; x1 = canvas.width / 2; y1 = canvas.height;
+            break;
+        default:
+            x0 = 0; y0 = canvas.height / 2; x1 = canvas.width; y1 = canvas.height / 2; // Default to left to right
+            break;
+    }
+
+    const gradient = ctx.createLinearGradient(x0, y0, x1, y1);
+    const smoothness = parseInt(gradientSmoothnessInput.value, 10) / 100; // Normalize to 0-1
+
+    // Adjust color stops based on smoothness
+    const color1End = 0.5 - (0.5 * smoothness);
+    const color2Start = 0.5 + (0.5 * smoothness);
+
     gradient.addColorStop(0, bgColor1Input.value);
+    gradient.addColorStop(color1End, bgColor1Input.value);
+    gradient.addColorStop(color2Start, bgColor2Input.value);
     gradient.addColorStop(1, bgColor2Input.value);
+
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -208,7 +246,7 @@ function handleDownload() {
 // --- Initial Setup & Event Listeners ---
 
 // Register all event listeners
-[bgColor1Input, bgColor2Input].forEach(input => input.addEventListener('input', drawCanvasBackground));
+[bgColor1Input, bgColor2Input, gradientDirectionSelect, gradientSmoothnessInput].forEach(input => input.addEventListener('input', drawCanvasBackground));
 [textColorInput, fontSizeInput, fontFamilySelect].forEach(input => input.addEventListener('input', updateTextPreview));
 iconTextarea.addEventListener('input', initializeCharacterStates);
 resetPositionBtn.addEventListener('click', initializeCharacterStates);

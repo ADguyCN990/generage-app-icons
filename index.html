@@ -63,7 +63,7 @@
                         <hr>
                         <div class="mb-3">
                             <label class="form-label fw-bold">背景渐变</label>
-                            <div class="row g-2">
+                            <div class="row g-2 mb-2">
                                 <div class="col">
                                     <label for="bgColor1" class="form-label-sm">起始色</label>
                                     <input type="color" class="form-control form-control-color" id="bgColor1" value="#3a61ff" title="选择渐变起始色">
@@ -72,6 +72,21 @@
                                     <label for="bgColor2" class="form-label-sm">结束色</label>
                                     <input type="color" class="form-control form-control-color" id="bgColor2" value="#8438ff" title="选择渐变结束色">
                                 </div>
+                            </div>
+                            <div class="mb-2">
+                                <label for="gradientDirection" class="form-label-sm">渐变方向</label>
+                                <select class="form-select" id="gradientDirection">
+                                    <option value="to top right">左下到右上</option>
+                                    <option value="to bottom right">左上到右下</option>
+                                    <option value="to right" selected>左到右 (默认)</option>
+                                    <option value="to left">右到左</option>
+                                    <option value="to top">下到上</option>
+                                    <option value="to bottom">上到下</option>
+                                </select>
+                            </div>
+                            <div class="mb-2">
+                                <label for="gradientSmoothness" class="form-label-sm">渐变平滑度</label>
+                                <input type="range" class="form-range" id="gradientSmoothness" min="0" max="100" value="50">
                             </div>
                         </div>
                         <hr>
