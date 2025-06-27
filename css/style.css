@@ -1,0 +1,29 @@
+body {
+    background-color: #f0f2f5;
+}
+.canvas-container {
+    position: relative;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    border-radius: 1rem;
+    overflow: hidden;
+}
+#iconCanvas {
+    display: block;
+    background-color: #eee;
+}
+#draggableTextContainer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    user-select: none; /* Prevent text selection during drag */
+}
+#draggableTextContainer span {
+    position: absolute; /* Crucial for positioning */
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif;
+    font-weight: bold;
+    text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
+    white-space: pre; /* Preserve spaces, but not line breaks which are handled by position */
+    text-align: center;
+}
