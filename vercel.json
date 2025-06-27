@@ -1,0 +1,10 @@
+{
+  "build": {
+    "env": {
+      "NODE_VERSION": "18"
+    }
+  },
+  "installCommand": "echo 'No install command needed for static site'",
+  "buildCommand": "echo 'No build command needed for static site'",
+  "outputDirectory": "."
+}
