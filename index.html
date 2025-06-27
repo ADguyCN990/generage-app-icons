@@ -20,16 +20,21 @@
             display: block;
             background-color: #eee;
         }
-        #draggableText {
+        #draggableTextContainer {
             position: absolute;
-            cursor: move;
-            color: white;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            user-select: none; /* Prevent text selection during drag */
+        }
+        #draggableTextContainer span {
+            position: absolute; /* Crucial for positioning */
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif;
             font-weight: bold;
             text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
-            white-space: pre-wrap; /* 支持\n换行 */
+            white-space: pre; /* Preserve spaces, but not line breaks which are handled by position */
             text-align: center;
-            user-select: none; /* 防止拖拽时选中文本 */
         }
     </style>
 </head>
@@ -50,6 +55,14 @@
                         <div class="mb-3">
                             <label for="iconText" class="form-label fw-bold">图标文字 (支持换行)</label>
                             <textarea class="form-control" id="iconText" rows="3">销售管理</textarea>
+                        </div>
+                        <hr>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">编辑模式</label>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch" id="individualModeSwitch">
+                                <label class="form-check-label" for="individualModeSwitch">开启单字拖动</label>
+                            </div>
                         </div>
                         <hr>
                         <div class="mb-3">
@@ -92,14 +105,14 @@
                 <h5 class="text-center text-muted mb-3">实时预览 (文字可拖动)</h5>
                 <div class="canvas-container mx-auto" style="width: 512px; height: 512px;">
                     <canvas id="iconCanvas" width="512" height="512"></canvas>
-                    <div id="draggableText">销售管理</div>
+                    <div id="draggableTextContainer"></div>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        // 获取所有需要的DOM元素
+        // --- DOM Element Acquisition ---
         const canvas = document.getElementById('iconCanvas');
         const ctx = canvas.getContext('2d');
         const iconTextarea = document.getElementById('iconText');
@@ -109,27 +122,77 @@
         const bgColor2Input = document.getElementById('bgColor2');
         const downloadBtn = document.getElementById('downloadBtn');
         const resetPositionBtn = document.getElementById('resetPositionBtn');
-        const draggableText = document.getElementById('draggableText');
+        const individualModeSwitch = document.getElementById('individualModeSwitch');
+        const draggableTextContainer = document.getElementById('draggableTextContainer');
 
-        // 初始状态
-        let textConfig = {
-            x: canvas.width / 2,
-            y: canvas.height / 2,
-            isDragging: false,
-            offsetX: 0,
-            offsetY: 0
+        // --- State Management ---
+        let state = {
+            characters: [], // Array to hold individual character objects { char, x, y, isDragging, offsetX, offsetY }
+            isGroupDragging: false,
+            groupDragOffsetX: 0,
+            groupDragOffsetY: 0,
+            get isIndividualMode() {
+                return individualModeSwitch.checked;
+            }
         };
 
-        // --- 核心绘图函数 ---
-        function draw() {
-            // 1. 绘制渐变背景
+        // --- Core Functions ---
+
+        /**
+         * Initializes or resets the character positions based on the textarea content.
+         */
+        function initializeCharacterStates() {
+            const text = iconTextarea.value;
+            const fontSize = parseInt(fontSizeInput.value, 10);
+            const lines = text.split('\n');
+            const lineHeight = fontSize * 1.2;
+            const totalTextHeight = lines.length * lineHeight;
+            const startY = (canvas.height - totalTextHeight) / 2 + lineHeight / 2;
+
+            state.characters = [];
+            let charIndex = 0;
+            lines.forEach((line, lineIndex) => {
+                const totalLineWidth = calculateLineWidth(line, fontSize);
+                const startX = (canvas.width - totalLineWidth) / 2;
+                let currentX = startX;
+
+                for (const char of line) {
+                    const charWidth = calculateLineWidth(char, fontSize);
+                    state.characters.push({
+                        id: charIndex++,
+                        char: char,
+                        x: currentX + charWidth / 2, // Center of the character
+                        y: startY + lineIndex * lineHeight,
+                        isDragging: false,
+                        offsetX: 0,
+                        offsetY: 0
+                    });
+                    currentX += charWidth;
+                }
+            });
+            updateTextPreview();
+        }
+        
+        /**
+         * Calculates the width of a text string.
+         */
+        function calculateLineWidth(text, fontSize) {
+            ctx.font = `${fontSize}px bold -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif`;
+            return ctx.measureText(text).width;
+        }
+
+        /**
+         * Draws the background canvas (gradient + highlight).
+         */
+        function drawCanvasBackground() {
+            // 1. Draw gradient background
             const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, canvas.width * 1.5);
             gradient.addColorStop(0, bgColor1Input.value);
             gradient.addColorStop(1, bgColor2Input.value);
             ctx.fillStyle = gradient;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // 2. 绘制左上角的高光效果
+            // 2. Draw top-left highlight
             const highlightGradient = ctx.createRadialGradient(0, 0, canvas.width * 0.5, 0, 0, canvas.width);
             highlightGradient.addColorStop(0, 'rgba(255, 255, 255, 0.4)');
             highlightGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
@@ -137,42 +200,92 @@
             ctx.fillRect(0, 0, canvas.width, canvas.height);
         }
 
-        // --- 更新预览文字的函数 ---
+        /**
+         * Updates the DOM to show the draggable character elements.
+         */
         function updateTextPreview() {
-            const text = iconTextarea.value;
+            draggableTextContainer.innerHTML = ''; // Clear previous elements
             const fontSize = `${fontSizeInput.value}px`;
             const color = textColorInput.value;
+
+            state.characters.forEach(charState => {
+                const charEl = document.createElement('span');
+                charEl.textContent = charState.char;
+                charEl.style.position = 'absolute';
+                charEl.style.left = `${charState.x}px`;
+                charEl.style.top = `${charState.y}px`;
+                charEl.style.transform = 'translate(-50%, -50%)'; // Center the element
+                charEl.style.fontSize = fontSize;
+                charEl.style.color = color;
+                charEl.style.cursor = 'move';
+                charEl.dataset.id = charState.id;
+                
+                // Add event listeners for dragging
+                charEl.addEventListener('mousedown', handleMouseDown);
+                
+                draggableTextContainer.appendChild(charEl);
+            });
+        }
+        
+        // --- Event Handlers ---
+
+        function handleMouseDown(e) {
+            e.preventDefault();
+            const canvasRect = canvas.getBoundingClientRect();
             
-            draggableText.innerText = text;
-            draggableText.style.fontSize = fontSize;
-            draggableText.style.color = color;
-            
-            // 动态调整位置以使其居中
-            draggableText.style.left = `${textConfig.x - draggableText.offsetWidth / 2}px`;
-            draggableText.style.top = `${textConfig.y - draggableText.offsetHeight / 2}px`;
+            if (state.isIndividualMode) {
+                const id = parseInt(e.target.dataset.id, 10);
+                const charState = state.characters.find(c => c.id === id);
+                if (charState) {
+                    charState.isDragging = true;
+                    charState.offsetX = e.clientX - canvasRect.left - charState.x;
+                    charState.offsetY = e.clientY - canvasRect.top - charState.y;
+                }
+            } else {
+                state.isGroupDragging = true;
+                state.groupDragOffsetX = e.clientX;
+                state.groupDragOffsetY = e.clientY;
+            }
+            draggableTextContainer.style.cursor = 'grabbing';
         }
 
-        // --- 事件监听 ---
+        function handleMouseMove(e) {
+            e.preventDefault();
+            const canvasRect = canvas.getBoundingClientRect();
 
-        // 所有控件变化时都重新绘制
-        [iconTextarea, textColorInput, fontSizeInput, bgColor1Input, bgColor2Input].forEach(input => {
-            input.addEventListener('input', () => {
-                draw();
+            if (state.isIndividualMode) {
+                const draggingChar = state.characters.find(c => c.isDragging);
+                if (draggingChar) {
+                    const newX = e.clientX - canvasRect.left - draggingChar.offsetX;
+                    const newY = e.clientY - canvasRect.top - draggingChar.offsetY;
+                    draggingChar.x = Math.max(0, Math.min(canvas.width, newX));
+                    draggingChar.y = Math.max(0, Math.min(canvas.height, newY));
+                    updateTextPreview();
+                }
+            } else if (state.isGroupDragging) {
+                const dx = e.clientX - state.groupDragOffsetX;
+                const dy = e.clientY - state.groupDragOffsetY;
+
+                state.characters.forEach(charState => {
+                    charState.x += dx;
+                    charState.y += dy;
+                });
+
+                state.groupDragOffsetX = e.clientX;
+                state.groupDragOffsetY = e.clientY;
                 updateTextPreview();
-            });
-        });
-        
-        // 重置文字位置
-        resetPositionBtn.addEventListener('click', () => {
-            textConfig.x = canvas.width / 2;
-            textConfig.y = canvas.height / 2;
-            updateTextPreview();
-        });
+            }
+        }
 
-        // 下载按钮
-        downloadBtn.addEventListener('click', () => {
-            // 在下载前，将预览的文字最终绘制到Canvas上
-            draw(); // 重新绘制背景以确保是最新的
+        function handleMouseUp(e) {
+            state.isGroupDragging = false;
+            state.characters.forEach(c => c.isDragging = false);
+            draggableTextContainer.style.cursor = 'default';
+        }
+
+        function handleDownload() {
+            drawCanvasBackground(); // Redraw background to ensure it's current
+
             ctx.fillStyle = textColorInput.value;
             ctx.font = `${fontSizeInput.value}px bold -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif`;
             ctx.textAlign = 'center';
@@ -182,60 +295,37 @@
             ctx.shadowOffsetX = 2;
             ctx.shadowOffsetY = 2;
 
-            // 处理多行文本
-            const lines = iconTextarea.value.split('\n');
-            const lineHeight = fontSizeInput.value * 1.2;
-            const totalHeight = lines.length * lineHeight;
-            const startY = textConfig.y - totalHeight / 2 + lineHeight / 2;
-
-            lines.forEach((line, index) => {
-                ctx.fillText(line, textConfig.x, startY + index * lineHeight);
+            // Draw each character at its specific position
+            state.characters.forEach(charState => {
+                ctx.fillText(charState.char, charState.x, charState.y);
             });
-            
-            // 创建下载链接
+
             const link = document.createElement('a');
             link.download = `${iconTextarea.value.split('\n')[0]}_icon.png`;
             link.href = canvas.toDataURL('image/png');
             link.click();
-        });
+            
+            // Redraw background after a short delay to restore the clean canvas for the user
+            setTimeout(drawCanvasBackground, 100);
+        }
 
-        // --- 文字拖拽逻辑 ---
-        draggableText.addEventListener('mousedown', (e) => {
-            textConfig.isDragging = true;
-            textConfig.offsetX = e.clientX - draggableText.offsetLeft;
-            textConfig.offsetY = e.clientY - draggableText.offsetTop;
-            draggableText.style.cursor = 'grabbing';
-        });
+        // --- Initial Setup & Event Listeners ---
 
-        document.addEventListener('mousemove', (e) => {
-            if (textConfig.isDragging) {
-                let newX = e.clientX - textConfig.offsetX;
-                let newY = e.clientY - textConfig.offsetY;
+        // Register all event listeners
+        [bgColor1Input, bgColor2Input].forEach(input => input.addEventListener('input', drawCanvasBackground));
+        [textColorInput, fontSizeInput].forEach(input => input.addEventListener('input', updateTextPreview));
+        iconTextarea.addEventListener('input', initializeCharacterStates);
+        resetPositionBtn.addEventListener('click', initializeCharacterStates);
+        downloadBtn.addEventListener('click', handleDownload);
+        
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
 
-                // 边界检测
-                const rect = canvas.getBoundingClientRect();
-                const textRect = draggableText.getBoundingClientRect();
-                const containerX = e.clientX - rect.left - textConfig.offsetX + draggableText.offsetWidth / 2;
-                const containerY = e.clientY - rect.top - textConfig.offsetY + draggableText.offsetHeight / 2;
-                
-                textConfig.x = Math.max(0, Math.min(canvas.width, containerX));
-                textConfig.y = Math.max(0, Math.min(canvas.height, containerY));
-                
-                updateTextPreview();
-            }
-        });
-
-        document.addEventListener('mouseup', () => {
-            textConfig.isDragging = false;
-            draggableText.style.cursor = 'move';
-        });
-
-        // --- 页面首次加载时初始化 ---
+        // Initial render on page load
         window.onload = () => {
-            draw();
-            updateTextPreview();
+            drawCanvasBackground();
+            initializeCharacterStates();
         };
-
     </script>
 </body>
 </html>
