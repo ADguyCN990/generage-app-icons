@@ -26,3 +26,14 @@ body {
     white-space: pre; /* Preserve spaces, but not line breaks which are handled by position */
     text-align: center;
 }
+
+/* Ensure range input thumb is draggable */
+.form-range::-webkit-slider-thumb {
+    cursor: grab;
+}
+.form-range::-moz-range-thumb {
+    cursor: grab;
+}
+.form-range::-ms-thumb {
+    cursor: grab;
+}

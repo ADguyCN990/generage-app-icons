@@ -164,6 +164,10 @@ function updateTextPreview() {
 // --- Event Handlers ---
 
 function handleMouseDown(e) {
+    // Allow native drag for range input
+    if (e.target === gradientSmoothnessInput) {
+        return;
+    }
     e.preventDefault();
     const canvasRect = canvas.getBoundingClientRect();
     
