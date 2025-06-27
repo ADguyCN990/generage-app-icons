@@ -151,6 +151,7 @@ function updateTextPreview() {
         charEl.style.transform = 'translate(-50%, -50%)'; // Center the element
         charEl.style.font = font;
         charEl.style.color = color;
+        charEl.style.letterSpacing = '0.02em'; // Add proportional letter spacing
         charEl.style.cursor = 'move';
         charEl.dataset.id = charState.id;
         
@@ -251,7 +252,13 @@ function handleDownload() {
 
 // Register all event listeners
 [bgColor1Input, bgColor2Input, gradientDirectionSelect, gradientSmoothnessInput].forEach(input => input.addEventListener('input', drawCanvasBackground));
-[textColorInput, fontSizeInput, fontFamilySelect].forEach(input => input.addEventListener('input', updateTextPreview));
+[textColorInput, fontSizeInput, fontFamilySelect].forEach(input => input.addEventListener('input', () => {
+    updateTextPreview();
+    // Re-initialize character states if font size changes to recalculate layout
+    if (input === fontSizeInput) {
+        initializeCharacterStates();
+    }
+}));
 iconTextarea.addEventListener('input', initializeCharacterStates);
 resetPositionBtn.addEventListener('click', initializeCharacterStates);
 downloadBtn.addEventListener('click', handleDownload);
