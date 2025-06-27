@@ -21,7 +21,6 @@ body {
 }
 #draggableTextContainer span {
     position: absolute; /* Crucial for positioning */
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif;
     font-weight: bold;
     text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
     white-space: pre; /* Preserve spaces, but not line breaks which are handled by position */

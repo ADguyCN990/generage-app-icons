@@ -6,6 +6,7 @@ const textColorInput = document.getElementById('textColor');
 const fontSizeInput = document.getElementById('fontSize');
 const bgColor1Input = document.getElementById('bgColor1');
 const bgColor2Input = document.getElementById('bgColor2');
+const fontFamilySelect = document.getElementById('fontFamily');
 const downloadBtn = document.getElementById('downloadBtn');
 const resetPositionBtn = document.getElementById('resetPositionBtn');
 const individualModeSwitch = document.getElementById('individualModeSwitch');
@@ -38,12 +39,12 @@ function initializeCharacterStates() {
     state.characters = [];
     let charIndex = 0;
     lines.forEach((line, lineIndex) => {
-        const totalLineWidth = calculateLineWidth(line, fontSize);
+        const totalLineWidth = calculateLineWidth(line);
         const startX = (canvas.width - totalLineWidth) / 2;
         let currentX = startX;
 
         for (const char of line) {
-            const charWidth = calculateLineWidth(char, fontSize);
+            const charWidth = calculateLineWidth(char);
             state.characters.push({
                 id: charIndex++,
                 char: char,
@@ -60,10 +61,19 @@ function initializeCharacterStates() {
 }
 
 /**
+ * Returns the current font style string based on selections.
+ */
+function getFontString() {
+    const fontSize = fontSizeInput.value;
+    const fontFamily = fontFamilySelect.value;
+    return `bold ${fontSize}px ${fontFamily}`;
+}
+
+/**
  * Calculates the width of a text string.
  */
-function calculateLineWidth(text, fontSize) {
-    ctx.font = `${fontSize}px bold -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif`;
+function calculateLineWidth(text) {
+    ctx.font = getFontString();
     return ctx.measureText(text).width;
 }
 
@@ -91,8 +101,8 @@ function drawCanvasBackground() {
  */
 function updateTextPreview() {
     draggableTextContainer.innerHTML = ''; // Clear previous elements
-    const fontSize = `${fontSizeInput.value}px`;
     const color = textColorInput.value;
+    const font = getFontString();
 
     state.characters.forEach(charState => {
         const charEl = document.createElement('span');
@@ -101,7 +111,7 @@ function updateTextPreview() {
         charEl.style.left = `${charState.x}px`;
         charEl.style.top = `${charState.y}px`;
         charEl.style.transform = 'translate(-50%, -50%)'; // Center the element
-        charEl.style.fontSize = fontSize;
+        charEl.style.font = font;
         charEl.style.color = color;
         charEl.style.cursor = 'move';
         charEl.dataset.id = charState.id;
@@ -173,13 +183,13 @@ function handleDownload() {
     drawCanvasBackground(); // Redraw background to ensure it's current
 
     ctx.fillStyle = textColorInput.value;
-    ctx.font = `${fontSizeInput.value}px bold -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif`;
+    ctx.font = getFontString();
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.shadowColor = 'rgba(0,0,0,0.5)';
-    ctx.shadowBlur = 5;
-    ctx.shadowOffsetX = 2;
-    ctx.shadowOffsetY = 2;
+    ctx.shadowBlur = 3;
+    ctx.shadowOffsetX = 1;
+    ctx.shadowOffsetY = 1;
 
     // Draw each character at its specific position
     state.characters.forEach(charState => {
@@ -199,7 +209,7 @@ function handleDownload() {
 
 // Register all event listeners
 [bgColor1Input, bgColor2Input].forEach(input => input.addEventListener('input', drawCanvasBackground));
-[textColorInput, fontSizeInput].forEach(input => input.addEventListener('input', updateTextPreview));
+[textColorInput, fontSizeInput, fontFamilySelect].forEach(input => input.addEventListener('input', updateTextPreview));
 iconTextarea.addEventListener('input', initializeCharacterStates);
 resetPositionBtn.addEventListener('click', initializeCharacterStates);
 downloadBtn.addEventListener('click', handleDownload);
